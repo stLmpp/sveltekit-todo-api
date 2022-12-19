@@ -3,17 +3,30 @@ import express from 'express';
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { Todo, TodoAdd, TodoAddSchema, TodoSchema } from './schemas';
+import helmet from 'helmet';
+import compression from 'compression';
+import rateLimit from 'express-rate-limit';
+import { authMiddleware } from './auth-middleware';
 
 initializeApp();
 const firestore = getFirestore();
-
-const app = express();
 
 function getCollection() {
   return firestore.collection('todos');
 }
 
-app
+const app = express()
+  .use(
+    rateLimit({
+      windowMs: 2 * 60 * 1000,
+      max: 100,
+      standardHeaders: true,
+      legacyHeaders: false,
+    })
+  )
+  .use(helmet())
+  .use(compression())
+  .use(authMiddleware())
   .get('/todos', async (req, res) => {
     const { docs } = await getCollection().get();
     const todos: Todo[] = [];

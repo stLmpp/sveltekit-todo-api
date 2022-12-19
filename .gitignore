@@ -71,3 +71,4 @@ lib/**/*.js.map
 
 # TypeScript v1 declaration files
 typings/
+.env.sveltekit-todo-app-9839a
