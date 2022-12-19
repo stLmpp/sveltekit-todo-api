@@ -27,5 +27,7 @@ module.exports = {
     'object-curly-spacing': ['off'],
     indent: ['off'],
     'quote-props': ['off'],
+    'linebreak-style': ['off'],
+    'require-jsdoc': ['off'],
   },
 };
