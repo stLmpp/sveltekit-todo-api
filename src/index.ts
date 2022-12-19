@@ -2,7 +2,13 @@ import { https } from 'firebase-functions';
 import express from 'express';
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-import { Todo, TodoAdd, TodoAddSchema, TodoSchema } from './schemas';
+import {
+  Todo,
+  TodoAdd,
+  TodoAddSchema,
+  TodoSchema,
+  TodoUpdateSchema,
+} from './schemas';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
@@ -84,10 +90,20 @@ const app = express()
       });
       return;
     }
-    await doc.update(req.body);
+    const parsed = await TodoUpdateSchema.safeParseAsync(req.body);
+    if (!parsed.success) {
+      res.status(400).send({
+        message: parsed.error.issues
+          .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
+          .join(', '),
+        error: 'Bad request',
+      });
+      return;
+    }
+    await doc.update(parsed.data);
     res
       .status(200)
-      .send({ ...docSnapshot.data(), ...req.body, id: docSnapshot.id });
+      .send({ ...docSnapshot.data(), ...parsed.data, id: docSnapshot.id });
   });
 
 export const api = https.onRequest(app);
