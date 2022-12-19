@@ -1,10 +1,11 @@
 import { https } from 'firebase-functions';
 import express from 'express';
-import { initializeApp } from 'firebase-admin';
-import { TodoAdd, TodoAddSchema, TodoSchema } from './schemas';
+import { initializeApp } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { Todo, TodoAdd, TodoAddSchema, TodoSchema } from './schemas';
 
-const firebase = initializeApp();
-const firestore = firebase.firestore();
+initializeApp();
+const firestore = getFirestore();
 
 const app = express();
 
@@ -12,25 +13,19 @@ function getCollection() {
   return firestore.collection('todos');
 }
 
-function isNotNil<T>(value: T): value is NonNullable<T> {
-  return value != null;
-}
-
 app
-  .get('/api/todos', async (req, res) => {
-    const docs = await getCollection().get();
-    const todos = docs.docs
-      .map((doc) => {
-        const parsed = TodoSchema.safeParse({ ...doc.data(), id: doc.id });
-        if (parsed.success) {
-          return parsed.data;
-        }
-        return null;
-      })
-      .filter(isNotNil);
+  .get('/todos', async (req, res) => {
+    const { docs } = await getCollection().get();
+    const todos: Todo[] = [];
+    for (const doc of docs) {
+      const parsed = TodoSchema.safeParse({ ...doc.data(), id: doc.id });
+      if (parsed.success) {
+        todos.push(parsed.data);
+      }
+    }
     res.status(200).send(todos);
   })
-  .get('/api/todos/:id', async (req, res) => {
+  .get('/todos/:id', async (req, res) => {
     const doc = await getCollection().doc(req.params.id).get();
     const parsed = await TodoSchema.safeParseAsync({
       ...doc.data(),
@@ -45,16 +40,18 @@ app
     }
     res.status(200).send(parsed.data);
   })
-  .delete('/api/todos/:id', async (req, res) => {
+  .delete('/todos/:id', async (req, res) => {
     const doc = getCollection().doc(req.params.id);
     await doc.delete();
     res.status(200).send();
   })
-  .post('/api/todos', async (req, res) => {
+  .post('/todos', async (req, res) => {
     const parsed = await TodoAddSchema.safeParseAsync(req.body);
     if (!parsed.success) {
       res.status(400).send({
-        message: parsed.error.message,
+        message: parsed.error.issues
+          .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
+          .join(', '),
         error: 'Bad request',
       });
       return;
@@ -64,8 +61,8 @@ app
     const doc = await result.get();
     res.status(201).send({ ...doc.data(), id: doc.id });
   })
-  .patch('/api/todos/:id', async (req, res) => {
-    const doc = await getCollection().doc(req.params.id);
+  .patch('/todos/:id', async (req, res) => {
+    const doc = getCollection().doc(req.params.id);
     const docSnapshot = await doc.get();
     if (!docSnapshot.exists) {
       res.status(404).send({
