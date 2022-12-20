@@ -1,18 +1,24 @@
 import { z } from 'zod';
 
+const DescriptionSchema = z.string().trim().max(500);
+const TitleSchema = z.string().trim().max(100);
+
 export const TodoAddSchema = z.object({
-  description: z.string().trim().max(100),
+  title: TitleSchema,
+  description: DescriptionSchema.optional(),
   completed: z.boolean().optional(),
 });
 
 export const TodoUpdateSchema = z.object({
-  description: z.string().trim().max(100).optional(),
+  description: DescriptionSchema.optional(),
   completed: z.boolean().optional(),
+  title: TitleSchema.optional(),
 });
 
 export const TodoSchema = z.object({
   id: z.string(),
-  description: z.string().trim().max(100),
+  description: DescriptionSchema.optional(),
+  title: TitleSchema,
   completed: z.boolean(),
 });
 
