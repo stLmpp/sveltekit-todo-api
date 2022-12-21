@@ -35,14 +35,20 @@ const app = express()
   .use(authMiddleware())
   .get('/todos', async (req, res) => {
     const { docs } = await getCollection().get();
-    const todos: Todo[] = [];
+    const todos: (Todo & { dateMs: number })[] = [];
     for (const doc of docs) {
       const parsed = TodoSchema.safeParse({ ...doc.data(), id: doc.id });
       if (parsed.success) {
-        todos.push(parsed.data);
+        todos.push({ ...parsed.data, dateMs: doc.createTime.toMillis() });
       }
     }
-    res.status(200).send(todos);
+    res
+      .status(200)
+      .send(
+        todos
+          .sort((todoA, todoB) => todoA.dateMs - todoB.dateMs)
+          .map(({ dateMs, ...todo }) => todo)
+      );
   })
   .get('/todos/:id', async (req, res) => {
     const doc = await getCollection().doc(req.params.id).get();
